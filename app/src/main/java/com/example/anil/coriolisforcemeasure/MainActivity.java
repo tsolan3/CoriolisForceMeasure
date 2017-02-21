@@ -8,6 +8,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -21,6 +22,7 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
+import java.util.Timer;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener{
 
@@ -42,12 +44,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     Button start;
     Button stop;
 
+    Timer timer = new Timer();
     File accelerometer_data;
     File gyroscope_data;
 
     FileOutputStream gyroscope_writer;
     FileOutputStream accelerometer_writer;
-
     long time;
     /**
      * Called when the activity is first created.
@@ -89,7 +91,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             public void onClick(View v) {
 
 
-                    time = System.currentTimeMillis() % 1000;
+                    time = System.currentTimeMillis();
                     mSensorManager.registerListener(MainActivity.this, mAccelerometerSensor, SensorManager.SENSOR_DELAY_GAME);
                     mSensorManager.registerListener(MainActivity.this, mGyroscopeSensor, SensorManager.SENSOR_DELAY_GAME);
                 }
@@ -101,7 +103,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 mSensorManager.unregisterListener(MainActivity.this);
             }
         });
-
     }
 
     @Override
@@ -144,28 +145,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
     }
 
+
     public void onSensorChanged(SensorEvent event) {
-        long currentTime = System.currentTimeMillis() % 1000;
-        if (currentTime - time > 0.5) {
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - time > 500) {
+
             time = currentTime;
-
-            float[] values = event.values;
             switch (event.sensor.getType()) {
-                case Sensor.TYPE_LINEAR_ACCELERATION: {
-                    mXAccValueText.setText(String.format("%1.3f",
-                            event.values[SensorManager.DATA_X]));
-                    mYAccValueText.setText(String.format("%1.3f",
-                            event.values[SensorManager.DATA_Y]));
-                    mZAccValueText.setText(String.format("%1.3f",
-                            event.values[SensorManager.DATA_Z]));
 
-                    try {
-                        accelerometer_writer.write((mXAccValueText+","+mYAccValueText+","+mZAccValueText+"\n").getBytes());
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    break;
-                }
 
                 case Sensor.TYPE_GYROSCOPE: {
                     mXGyrValueText.setText(String.format("%1.3f",
@@ -175,22 +162,31 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     mZGyrValueText.setText(String.format("%1.3f",
                             event.values[SensorManager.DATA_Z]));
 
-                    try {
-                        gyroscope_writer.write((mXGyrValueText+","+mYGyrValueText+","+mZGyrValueText+"\n").getBytes());
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
                     double CoriolisForce = 0.0f;
                     double mass = 0.145;
-                    CoriolisForce += -2 * mass * 1 * values[SensorManager.DATA_Y];
+                    //CoriolisForce += -2 * mass * 1 * values[SensorManager.DATA_Y];
                     mForceValueText.setText(String.format("%1.3f", CoriolisForce));
 
                     break;
                 }
+
+
+                case Sensor.TYPE_LINEAR_ACCELERATION: {
+                    mXAccValueText.setText(String.format("%1.3f",
+                            event.values[SensorManager.DATA_X]));
+                    mYAccValueText.setText(String.format("%1.3f",
+                            event.values[SensorManager.DATA_Y]));
+                    mZAccValueText.setText(String.format("%1.3f",
+                            event.values[SensorManager.DATA_Z]));
+                    break;
+                }
+
+            }
             }
         }
-    }
+
+
+
 
     public void onRequestPermissionsResult(int requestCode,  String[] permissions,  int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
