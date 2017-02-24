@@ -1,28 +1,25 @@
 package com.example.anil.coriolisforcemeasure;
 
-import android.Manifest;
-import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.os.Handler;
+import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.List;
-import java.util.Timer;
+
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener{
 
@@ -30,26 +27,31 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     Sensor mAccelerometerSensor;
     Sensor mGyroscopeSensor;
 
-
     TextView mForceValueText;
+
     TextView mXAccValueText;
     TextView mYAccValueText;
     TextView mZAccValueText;
+
     TextView mXGyrValueText;
     TextView mYGyrValueText;
     TextView mZGyrValueText;
+
+    TextView mXVelValueText;
+    TextView mYVelValueText;
+    TextView mZVelValueText;
+
+
 
     Context context;
 
     Button start;
     Button stop;
 
-    Timer timer = new Timer();
-    File accelerometer_data;
-    File gyroscope_data;
+    double velocity_x;
+    double velocity_y;
+    double velocity_z;
 
-    FileOutputStream gyroscope_writer;
-    FileOutputStream accelerometer_writer;
     long time;
     /**
      * Called when the activity is first created.
@@ -86,58 +88,42 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mXGyrValueText = (TextView)findViewById(R.id.value_gyr_x);
         mYGyrValueText = (TextView)findViewById(R.id.value_gyr_y);
         mZGyrValueText = (TextView)findViewById(R.id.value_gyr_z);
+        mXVelValueText = (TextView)findViewById(R.id.value_vel_x);
+        mYVelValueText = (TextView)findViewById(R.id.value_vel_y);
+        mZVelValueText = (TextView)findViewById(R.id.value_vel_z);
+
         start.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
 
 
-                    time = System.currentTimeMillis();
-                    mSensorManager.registerListener(MainActivity.this, mAccelerometerSensor, SensorManager.SENSOR_DELAY_GAME);
-                    mSensorManager.registerListener(MainActivity.this, mGyroscopeSensor, SensorManager.SENSOR_DELAY_GAME);
-                }
+                time = System.currentTimeMillis();
+                mSensorManager.registerListener(MainActivity.this, mAccelerometerSensor, SensorManager.SENSOR_DELAY_GAME);
+                mSensorManager.registerListener(MainActivity.this, mGyroscopeSensor, SensorManager.SENSOR_DELAY_GAME);
 
-        });
+                File path = Environment.getExternalStoragePublicDirectory(
+                        Environment.DIRECTORY_MOVIES);
+            }
+
+            });
         stop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 mSensorManager.unregisterListener(MainActivity.this);
+
             }
         });
     }
 
     @Override
     protected void onPause() {
-        //mSensorManager.unregisterListener(this);
         super.onPause();
-
-        if (accelerometer_writer != null) {
-            try {
-                accelerometer_writer.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        if (gyroscope_writer != null) {
-            try {
-                gyroscope_writer.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
 
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        try {
-            accelerometer_writer = openFileOutput(System.currentTimeMillis()+"accelerometer_data.txt", Context.MODE_PRIVATE);
-            gyroscope_writer = openFileOutput(System.currentTimeMillis()+"gyroscope_data.txt", Context.MODE_PRIVATE);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-        //accelerometer_writer = new FileWriter(System.currentTimeMillis()+"accelerometer_data.txt", true);
-        //gyroscope_writer = new FileWriter(System.currentTimeMillis()+"gyroscope_data.txt", true);
 
     }
 
@@ -148,7 +134,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     public void onSensorChanged(SensorEvent event) {
         long currentTime = System.currentTimeMillis();
-        if (currentTime - time > 500) {
+        if (currentTime - time > 1000) {
+
 
             time = currentTime;
             switch (event.sensor.getType()) {
@@ -162,10 +149,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     mZGyrValueText.setText(String.format("%1.3f",
                             event.values[SensorManager.DATA_Z]));
 
-                    double CoriolisForce = 0.0f;
-                    double mass = 0.145;
-                    //CoriolisForce += -2 * mass * 1 * values[SensorManager.DATA_Y];
-                    mForceValueText.setText(String.format("%1.3f", CoriolisForce));
+                    double[] ang_velocity = {event.values[SensorManager.DATA_X], event.values[SensorManager.DATA_Y],
+                    event.values[SensorManager.DATA_Z]};
 
                     break;
                 }
@@ -178,14 +163,42 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                             event.values[SensorManager.DATA_Y]));
                     mZAccValueText.setText(String.format("%1.3f",
                             event.values[SensorManager.DATA_Z]));
+
+                    if (event.values[SensorManager.DATA_X] > 0.5 || event.values[SensorManager.DATA_X] < -0.5) {
+                        mXVelValueText.setText((String.format("%1.3f",
+                                velocity_x += event.values[SensorManager.DATA_X])));
+                    }
+
+                    if (event.values[SensorManager.DATA_Y] > 0.5 || event.values[SensorManager.DATA_Y] < -0.5) {
+                        mYVelValueText.setText((String.format("%1.3f",
+                                velocity_y += event.values[SensorManager.DATA_Y])));
+                    }
+
+                    if (event.values[SensorManager.DATA_Z] > 0.5 || event.values[SensorManager.DATA_Z] < -0.5) {
+                        mZVelValueText.setText((String.format("%1.3f",
+                                velocity_x += event.values[SensorManager.DATA_Y])));
+                    }
+                    double[] velocity = {velocity_x, velocity_y, velocity_z};
+
                     break;
                 }
 
             }
-            }
         }
 
+            }
 
+
+    private void writeToFile(String data,int time, Context context) {
+        try {
+            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(context.openFileOutput(time+"gyroscope_data.txt", Context.MODE_PRIVATE));
+            outputStreamWriter.write(data);
+            outputStreamWriter.close();
+        }
+        catch (IOException e) {
+            Log.e("Exception", "File write failed: " + e.toString());
+        }
+    }
 
 
     public void onRequestPermissionsResult(int requestCode,  String[] permissions,  int[] grantResults) {
