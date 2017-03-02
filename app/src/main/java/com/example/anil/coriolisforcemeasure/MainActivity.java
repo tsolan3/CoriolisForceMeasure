@@ -6,18 +6,14 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.os.Environment;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
+import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
+import java.io.FileNotFoundException;
 import java.util.List;
 
 
@@ -41,7 +37,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     TextView mYVelValueText;
     TextView mZVelValueText;
 
-
+    long gyroscopeTime;
+    long accelerometerTime;
 
     Context context;
 
@@ -53,15 +50,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     double velocity_z;
 
     long time;
-    /**
-     * Called when the activity is first created.
-     */
+
+
+    public MainActivity() throws FileNotFoundException {
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         start = (Button)findViewById(R.id.button_start);
         stop = (Button)findViewById(R.id.button_stop) ;
+
 
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         List<Sensor> sensors = mSensorManager.getSensorList(Sensor.TYPE_ALL);
@@ -80,6 +80,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
         }
         context= this;
+
+
 
         mForceValueText = (TextView)findViewById(R.id.value_force);
         mXAccValueText = (TextView)findViewById(R.id.value_x);
@@ -101,8 +103,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 mSensorManager.registerListener(MainActivity.this, mAccelerometerSensor, SensorManager.SENSOR_DELAY_GAME);
                 mSensorManager.registerListener(MainActivity.this, mGyroscopeSensor, SensorManager.SENSOR_DELAY_GAME);
 
-                File path = Environment.getExternalStoragePublicDirectory(
-                        Environment.DIRECTORY_MOVIES);
+
             }
 
             });
@@ -110,7 +111,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View v) {
                 mSensorManager.unregisterListener(MainActivity.this);
-
             }
         });
     }
@@ -133,15 +133,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
 
     public void onSensorChanged(SensorEvent event) {
-        long currentTime = System.currentTimeMillis();
-        if (currentTime - time > 1000) {
-
-
-            time = currentTime;
-            switch (event.sensor.getType()) {
-
-
-                case Sensor.TYPE_GYROSCOPE: {
+        long currentTime;
+        switch (event.sensor.getType()) {
+            case Sensor.TYPE_GYROSCOPE:
+                currentTime = System.currentTimeMillis();
+                if (currentTime - gyroscopeTime > 1000) {
                     mXGyrValueText.setText(String.format("%1.3f",
                             event.values[SensorManager.DATA_X]));
                     mYGyrValueText.setText(String.format("%1.3f",
@@ -150,13 +146,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                             event.values[SensorManager.DATA_Z]));
 
                     double[] ang_velocity = {event.values[SensorManager.DATA_X], event.values[SensorManager.DATA_Y],
-                    event.values[SensorManager.DATA_Z]};
+                            event.values[SensorManager.DATA_Z]};
 
-                    break;
+                    gyroscopeTime = currentTime;
                 }
+                break;
 
-
-                case Sensor.TYPE_LINEAR_ACCELERATION: {
+            case Sensor.TYPE_LINEAR_ACCELERATION:
+                currentTime = System.currentTimeMillis();
+                if (currentTime - accelerometerTime > 1000) {
                     mXAccValueText.setText(String.format("%1.3f",
                             event.values[SensorManager.DATA_X]));
                     mYAccValueText.setText(String.format("%1.3f",
@@ -180,26 +178,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     }
                     double[] velocity = {velocity_x, velocity_y, velocity_z};
 
-                    break;
+                    accelerometerTime = currentTime;
                 }
-
-            }
-        }
-
-            }
-
-
-    private void writeToFile(String data,int time, Context context) {
-        try {
-            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(context.openFileOutput(time+"gyroscope_data.txt", Context.MODE_PRIVATE));
-            outputStreamWriter.write(data);
-            outputStreamWriter.close();
-        }
-        catch (IOException e) {
-            Log.e("Exception", "File write failed: " + e.toString());
+                break;
         }
     }
-
 
     public void onRequestPermissionsResult(int requestCode,  String[] permissions,  int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
